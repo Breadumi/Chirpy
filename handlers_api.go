@@ -51,6 +51,7 @@ func (cfg *apiConfig) createChirp(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Printf("Error querying database: %s", err)
 		respondWithError(w, http.StatusInternalServerError, "error querying database")
+		return
 	}
 
 	respondWithJSON(w, http.StatusCreated, response{
@@ -62,6 +63,34 @@ func (cfg *apiConfig) createChirp(w http.ResponseWriter, req *http.Request) {
 			UserID:    chirp.UserID,
 		},
 	})
+
+}
+
+func (cfg *apiConfig) getChirps(w http.ResponseWriter, req *http.Request) {
+	chirpsSQLC, err := cfg.db.GetChirps(req.Context())
+	if err != nil {
+		log.Printf("error querying database: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "error querying database")
+		return
+	}
+
+	var chirps []Chirp
+
+	for _, c := range chirpsSQLC {
+		chirps = append(chirps, Chirp{
+			ID:        c.ID,
+			CreatedAt: c.CreatedAt,
+			UpdatedAt: c.UpdatedAt,
+			Body:      c.Body,
+			UserID:    c.UserID,
+		})
+	}
+	if err != nil {
+		log.Printf("error creating JSON tags: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "error creating JSON tags")
+	}
+
+	respondWithJSON(w, http.StatusOK, chirps)
 
 }
 

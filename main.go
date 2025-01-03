@@ -54,15 +54,16 @@ func main() {
 		Handler: mux,
 	}
 
-	mux.HandleFunc("GET /api/healthz", readinessEndpoint) // register readiness endpoint
-	mux.HandleFunc("POST /api/users", cfg.createUser)     // register user creation endpoint
-	mux.HandleFunc("POST /api/chirps", cfg.createChirp)
+	mux.HandleFunc("GET /api/healthz", readinessEndpoint) // check readiness
+	mux.HandleFunc("POST /api/users", cfg.createUser)     // create one user
+	mux.HandleFunc("POST /api/chirps", cfg.createChirp)   // create one chirp
+	mux.HandleFunc("GET /api/chirps", cfg.getChirps)      // return all chirps
 
 	fileServer := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.mwMetricInc(fileServer))) // serve files from root directory
 
-	mux.HandleFunc("GET /admin/metrics", cfg.reqCount)  // register hit counter endpoint
-	mux.HandleFunc("POST /admin/reset", cfg.resetCount) // register hit counter reset
+	mux.HandleFunc("GET /admin/metrics", cfg.reqCount)  // return hit counter
+	mux.HandleFunc("POST /admin/reset", cfg.resetCount) // reset hit counter and re-init database
 
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
