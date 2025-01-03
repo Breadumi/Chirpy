@@ -67,6 +67,7 @@ func (cfg *apiConfig) createChirp(w http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) getChirps(w http.ResponseWriter, req *http.Request) {
+
 	chirpsSQLC, err := cfg.db.GetChirps(req.Context())
 	if err != nil {
 		log.Printf("error querying database: %s", err)
@@ -91,7 +92,33 @@ func (cfg *apiConfig) getChirps(w http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) getChirp(w http.ResponseWriter, req *http.Request) {
+
+	type response struct {
+		Chirp
+	}
+
 	chirpID := req.PathValue("chirpID")
+	chirpUUID, err := uuid.Parse(chirpID)
+	if err != nil {
+		log.Printf("error converting JSON to UUID: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "error converting JSON to UUID")
+	}
+
+	dbChirp, err := cfg.db.GetChirp(req.Context(), chirpUUID)
+	if err != nil {
+		log.Printf("error retrieving chirp: %s", err)
+		respondWithError(w, http.StatusNotFound, "invalid id")
+	}
+
+	respondWithJSON(w, http.StatusOK, response{
+		Chirp{
+			ID:        dbChirp.ID,
+			CreatedAt: dbChirp.CreatedAt,
+			UpdatedAt: dbChirp.UpdatedAt,
+			Body:      dbChirp.Body,
+			UserID:    dbChirp.UserID,
+		},
+	})
 
 }
 
