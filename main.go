@@ -47,6 +47,7 @@ func main() {
 
 	mux.HandleFunc("GET /api/healthz", readinessEndpoint)     // register readiness endpoint
 	mux.HandleFunc("POST /api/validate_chirp", validateChirp) // register chirp validation endpoint
+	mux.HandleFunc("POST /api/users", createUser)             // register user creation endpoint
 
 	fileServer := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.mwMetricInc(fileServer))) // serve files from root directory
