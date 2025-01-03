@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/Breadumi/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 func readinessEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -12,39 +15,53 @@ func readinessEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func validateChirp(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) createChirp(w http.ResponseWriter, req *http.Request) {
 
-	type params struct {
-		Body string `json:"body"`
+	type parameters struct {
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 
 	type response struct {
-		CleanedBody string `json:"cleaned_body"`
+		Chirp
 	}
 
-	w.Header().Set("Content-Type", "application/json") // set content type to JSON
+	params := parameters{}
 
 	decoder := json.NewDecoder(req.Body)
-	r := params{}
-	err := decoder.Decode(&r)
-
-	// set http status codes and body
-	if err != nil {
-		log.Printf("Error decoding paramters: %s", err)
-		w.WriteHeader(500)
+	if err := decoder.Decode(&params); err != nil {
+		log.Printf("Error decoding parameters: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "error decoding parameters")
 		return
 	}
+
+	//prettyprint(params) // debugging line
 
 	// check if length is acceptable
-	if len(r.Body) > 140 {
-		respondWithError(w, 400, "Chirp is too long")
-		return
-	} else {
-		respondWithJSON(w, 200, response{
-			CleanedBody: cleanText(r.Body),
-		})
+	if len(params.Body) > 140 {
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
 		return
 	}
+
+	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{
+		Body:   params.Body,
+		UserID: params.UserID,
+	})
+	//prettyprint(chirp) // debugging line
+	if err != nil {
+		log.Printf("Error querying database: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "error querying database")
+	}
+
+	respondWithJSON(w, http.StatusCreated, response{
+		Chirp{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      cleanText(chirp.Body),
+			UserID:    chirp.UserID,
+		},
+	})
 
 }
 
@@ -62,14 +79,15 @@ func (cfg *apiConfig) createUser(w http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	if err := decoder.Decode(&params); err != nil {
 		log.Printf("error decoding parameters: %s", err)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	user, err := cfg.db.CreateUser(req.Context(), params.Email)
+	//prettyprint(user) // debugging line
 	if err != nil {
 		log.Printf("error creating user: %s", err)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

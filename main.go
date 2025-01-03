@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/Breadumi/Chirpy/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -32,6 +34,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err = upMigrateDB(db); err != nil {
+		log.Fatal(err)
+	}
+
 	dbQueries := database.New(db)
 
 	cfg := apiConfig{
@@ -48,9 +54,9 @@ func main() {
 		Handler: mux,
 	}
 
-	mux.HandleFunc("GET /api/healthz", readinessEndpoint)     // register readiness endpoint
-	mux.HandleFunc("POST /api/validate_chirp", validateChirp) // register chirp validation endpoint
-	mux.HandleFunc("POST /api/users", cfg.createUser)         // register user creation endpoint
+	mux.HandleFunc("GET /api/healthz", readinessEndpoint) // register readiness endpoint
+	mux.HandleFunc("POST /api/users", cfg.createUser)     // register user creation endpoint
+	mux.HandleFunc("POST /api/chirps", cfg.createChirp)
 
 	fileServer := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.mwMetricInc(fileServer))) // serve files from root directory
@@ -61,4 +67,26 @@ func main() {
 	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
 
+}
+
+func upMigrateDB(db *sql.DB) error {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+
+	err := goose.Up(db, "sql/schema") // successful output is not printed to console
+
+	// close new output containing unwanted logs
+	w.Close()
+	r.Close()
+	os.Stdout = old
+	log.SetOutput(os.Stderr)
+
+	// log migration errors in console if necessary
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -24,8 +24,12 @@ func (cfg *apiConfig) reqCount(w http.ResponseWriter, req *http.Request) {
 
 func (cfg *apiConfig) resetCount(w http.ResponseWriter, req *http.Request) {
 
+	type response struct {
+		Body string `json:"body"`
+	}
+
 	if cfg.platform != "dev" {
-		respondWithError(w, 403, "Forbidden")
+		respondWithError(w, http.StatusForbidden, "")
 		return
 	}
 
@@ -35,7 +39,7 @@ func (cfg *apiConfig) resetCount(w http.ResponseWriter, req *http.Request) {
 	}
 
 	cfg.fileserverHits = atomic.Int32{}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hit count reset to 0\nAll users deleted\n"))
+	respondWithJSON(w, http.StatusOK, response{
+		Body: "Hit count reset to 0\nDatabase re-initialized\n",
+	})
 }

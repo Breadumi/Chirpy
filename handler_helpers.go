@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"slices"
@@ -26,6 +27,8 @@ func cleanText(msg string) string {
 
 func respondWithError(w http.ResponseWriter, code int, msg string) {
 
+	w.Header().Set("Content-Type", "application/json")
+
 	type response struct {
 		Error string `json:"error"`
 	}
@@ -38,7 +41,7 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -55,10 +58,19 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Write(dat)
 
+}
+
+//lint:ignore U1000 debugging function
+func prettyprint(payload interface{}) {
+	p, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		log.Fatal("prettyprint failed")
+	}
+	fmt.Printf("%+v\n", string(p))
 }
