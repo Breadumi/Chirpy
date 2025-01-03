@@ -85,12 +85,13 @@ func (cfg *apiConfig) getChirps(w http.ResponseWriter, req *http.Request) {
 			UserID:    c.UserID,
 		})
 	}
-	if err != nil {
-		log.Printf("error creating JSON tags: %s", err)
-		respondWithError(w, http.StatusInternalServerError, "error creating JSON tags")
-	}
 
 	respondWithJSON(w, http.StatusOK, chirps)
+
+}
+
+func (cfg *apiConfig) getChirp(w http.ResponseWriter, req *http.Request) {
+	chirpID := req.PathValue("chirpID")
 
 }
 
