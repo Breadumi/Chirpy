@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"sync/atomic"
@@ -22,8 +23,19 @@ func (cfg *apiConfig) reqCount(w http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) resetCount(w http.ResponseWriter, req *http.Request) {
+
+	if cfg.platform != "dev" {
+		respondWithError(w, 403, "Forbidden")
+		return
+	}
+
+	err := cfg.db.DeleteUsers(req.Context())
+	if err != nil {
+		log.Printf("error deleting users: %s", err)
+	}
+
 	cfg.fileserverHits = atomic.Int32{}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hit count reset to 0"))
+	w.Write([]byte("Hit count reset to 0\nAll users deleted\n"))
 }

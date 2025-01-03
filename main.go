@@ -9,6 +9,7 @@ import (
 
 	"github.com/Breadumi/Chirpy/internal/database"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -18,6 +19,7 @@ const (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
+	platform       string
 }
 
 func main() {
@@ -35,6 +37,7 @@ func main() {
 	cfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
+		platform:       os.Getenv("PLATFORM"),
 	}
 
 	port := "8080"
@@ -47,7 +50,7 @@ func main() {
 
 	mux.HandleFunc("GET /api/healthz", readinessEndpoint)     // register readiness endpoint
 	mux.HandleFunc("POST /api/validate_chirp", validateChirp) // register chirp validation endpoint
-	mux.HandleFunc("POST /api/users", createUser)             // register user creation endpoint
+	mux.HandleFunc("POST /api/users", cfg.createUser)         // register user creation endpoint
 
 	fileServer := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.mwMetricInc(fileServer))) // serve files from root directory
