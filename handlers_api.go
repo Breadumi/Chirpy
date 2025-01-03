@@ -14,10 +14,18 @@ func readinessEndpoint(w http.ResponseWriter, req *http.Request) {
 
 func validateChirp(w http.ResponseWriter, req *http.Request) {
 
+	type params struct {
+		Body string `json:"body"`
+	}
+
+	type response struct {
+		CleanedBody string `json:"cleaned_body"`
+	}
+
 	w.Header().Set("Content-Type", "application/json") // set content type to JSON
 
 	decoder := json.NewDecoder(req.Body)
-	r := reqS{}
+	r := params{}
 	err := decoder.Decode(&r)
 
 	// set http status codes and body
@@ -32,8 +40,8 @@ func validateChirp(w http.ResponseWriter, req *http.Request) {
 		respondWithError(w, 400, "Chirp is too long")
 		return
 	} else {
-		respondWithJSON(w, 200, cleanedBody{
-			Cleaned_Body: cleanText(r.Body),
+		respondWithJSON(w, 200, response{
+			CleanedBody: cleanText(r.Body),
 		})
 		return
 	}
@@ -41,28 +49,37 @@ func validateChirp(w http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) createUser(w http.ResponseWriter, req *http.Request) {
-	e := emailReq{}
+
+	type parameters struct {
+		Email string `json:"email"`
+	}
+
+	type response struct {
+		User
+	}
+
+	params := parameters{}
 	decoder := json.NewDecoder(req.Body)
-	if err := decoder.Decode(&e); err != nil {
+	if err := decoder.Decode(&params); err != nil {
 		log.Printf("error decoding parameters: %s", err)
 		w.WriteHeader(500)
 		return
 	}
 
-	email, err := cfg.db.CreateUser(req.Context(), e.Email)
+	user, err := cfg.db.CreateUser(req.Context(), params.Email)
 	if err != nil {
 		log.Printf("error creating user: %s", err)
 		w.WriteHeader(500)
 		return
 	}
 
-	customUser := User{
-		ID:        email.ID,
-		CreatedAt: email.CreatedAt,
-		UpdatedAt: email.UpdatedAt,
-		Email:     email.Email,
-	}
-
-	respondWithJSON(w, 201, customUser)
+	respondWithJSON(w, 201, response{
+		User: User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
+	})
 
 }

@@ -26,9 +26,13 @@ func cleanText(msg string) string {
 
 func respondWithError(w http.ResponseWriter, code int, msg string) {
 
+	type response struct {
+		Error string `json:"error"`
+	}
+
 	w.WriteHeader(code)
 
-	dat, err := json.Marshal(eS{
+	dat, err := json.Marshal(response{
 		Error: msg,
 	})
 
@@ -43,6 +47,8 @@ func respondWithError(w http.ResponseWriter, code int, msg string) {
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
 	dat, err := json.Marshal(payload)
