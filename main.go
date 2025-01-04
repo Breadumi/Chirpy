@@ -62,6 +62,8 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", cfg.getChirps)          // return all chirps
 	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.getChirp) // return one chirp
 	mux.HandleFunc("POST /api/login", cfg.login)              // log in a user
+	mux.HandleFunc("POST /api/refresh", cfg.refresh)          // create new JWT if refresh valid
+	mux.HandleFunc("POST /api/revoke", cfg.revoke)
 
 	fileServer := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.mwMetricInc(fileServer))) // serve files from root directory
