@@ -9,3 +9,19 @@ TRUNCATE users CASCADE;
 -- name: GetUserByEmail :one
 SELECT * FROM users
 WHERE email = $1;
+
+-- name: UpdateUser :one
+UPDATE users
+SET updated_at = NOW(), email = $2, hashed_password = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: GetUserByID :one
+SELECT * FROM users
+WHERE id = $1;
+
+-- name: UpgradeUser :one
+UPDATE users
+SET is_chirpy_red = true, updated_at = NOW()
+WHERE id = $1
+RETURNING *;

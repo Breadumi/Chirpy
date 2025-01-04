@@ -23,6 +23,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	secret         string
+	polkaKey       string
 }
 
 func main() {
@@ -46,6 +47,7 @@ func main() {
 		db:             dbQueries,
 		platform:       os.Getenv("PLATFORM"),
 		secret:         os.Getenv("SECRET"),
+		polkaKey:       os.Getenv("POLKA_KEY"),
 	}
 
 	port := "8080"
@@ -56,14 +58,17 @@ func main() {
 		Handler: mux,
 	}
 
-	mux.HandleFunc("GET /api/healthz", readinessEndpoint)     // check readiness
-	mux.HandleFunc("POST /api/users", cfg.createUser)         // create one user
-	mux.HandleFunc("POST /api/chirps", cfg.createChirp)       // create one chirp
-	mux.HandleFunc("GET /api/chirps", cfg.getChirps)          // return all chirps
-	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.getChirp) // return one chirp
-	mux.HandleFunc("POST /api/login", cfg.login)              // log in a user
-	mux.HandleFunc("POST /api/refresh", cfg.refresh)          // create new JWT if refresh valid
-	mux.HandleFunc("POST /api/revoke", cfg.revoke)
+	mux.HandleFunc("GET /api/healthz", readinessEndpoint)             // check readiness
+	mux.HandleFunc("POST /api/users", cfg.createUser)                 // create one user
+	mux.HandleFunc("POST /api/chirps", cfg.createChirp)               // create one chirp
+	mux.HandleFunc("GET /api/chirps", cfg.getChirps)                  // return all chirps
+	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.getChirp)         // return one chirp
+	mux.HandleFunc("POST /api/login", cfg.login)                      // log in a user
+	mux.HandleFunc("POST /api/refresh", cfg.refresh)                  // create new JWT if refresh valid
+	mux.HandleFunc("POST /api/revoke", cfg.revoke)                    // revoke expired refresh tokens
+	mux.HandleFunc("PUT /api/users", cfg.updateLogin)                 // update email and password
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.deleteChirp)   // delete chirp with chirpID
+	mux.HandleFunc("POST /api/polka/webhooks", cfg.registerChirpyRed) // subscribe user to Chirpy Red
 
 	fileServer := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.mwMetricInc(fileServer))) // serve files from root directory

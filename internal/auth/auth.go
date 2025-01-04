@@ -71,10 +71,10 @@ func GetBearerToken(headers http.Header) (string, error) {
 		return "", errors.New("no authorization present")
 	}
 	authWords := strings.Fields(authString)
-	if len(authWords) <= 1 {
+	if len(authWords) != 2 || authWords[0] != "Bearer" {
 		return "", errors.New("malformed authorization string")
 	}
-	token_string := authWords[len(authWords)-1]
+	token_string := authWords[1]
 
 	return token_string, nil
 
@@ -89,4 +89,20 @@ func MakeRefreshToken() (string, error) {
 
 	token := hex.EncodeToString(nums)
 	return token, nil
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+
+	authString := headers.Get("Authorization")
+	if authString == "" {
+		return "", errors.New("no authorization present")
+	}
+	authWords := strings.Fields(authString)
+	if len(authWords) != 2 || authWords[0] != "ApiKey" {
+		return "", errors.New("malformed authorization string")
+	}
+	apiKey := authWords[1]
+
+	return apiKey, nil
+
 }

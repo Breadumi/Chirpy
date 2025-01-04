@@ -119,12 +119,14 @@ func (cfg *apiConfig) getChirp(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Printf("error converting JSON to UUID: %s", err)
 		respondWithError(w, http.StatusInternalServerError, "error converting JSON to UUID")
+		return
 	}
 
 	dbChirp, err := cfg.db.GetChirp(req.Context(), chirpUUID)
 	if err != nil {
 		log.Printf("error retrieving chirp: %s", err)
 		respondWithError(w, http.StatusNotFound, "invalid id")
+		return
 	}
 
 	respondWithJSON(w, http.StatusOK, response{
@@ -178,10 +180,11 @@ func (cfg *apiConfig) createUser(w http.ResponseWriter, req *http.Request) {
 
 	respondWithJSON(w, http.StatusCreated, response{
 		User: User{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
+			ID:          user.ID,
+			CreatedAt:   user.CreatedAt,
+			UpdatedAt:   user.UpdatedAt,
+			Email:       user.Email,
+			IsChirpyRed: user.IsChirpyRed,
 		},
 	})
 
@@ -250,62 +253,110 @@ func (cfg *apiConfig) login(w http.ResponseWriter, req *http.Request) {
 			Email:        dbUser.Email,
 			Token:        tokenString,
 			RefreshToken: refreshToken,
+			IsChirpyRed:  dbUser.IsChirpyRed,
 		},
 	})
 
 }
 
-func (cfg *apiConfig) refresh(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) updateLogin(w http.ResponseWriter, req *http.Request) {
+
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
 
 	type response struct {
-		Token string `json:"token"`
+		User
 	}
 
-	refreshTokenString, err := auth.GetBearerToken(req.Header)
+	jwtString, err := auth.GetBearerToken(req.Header)
 	if err != nil {
 		log.Printf("error retrieving refresh token")
-		respondWithError(w, http.StatusBadRequest, "error retrieving refresh token")
+		respondWithError(w, http.StatusUnauthorized, "error retrieving refresh token")
 		return
 	}
 
-	dbRefreshToken, err := cfg.db.GetUserFromRefreshToken(req.Context(), refreshTokenString)
+	userID, err := auth.ValidateJWT(jwtString, cfg.secret)
 	if err != nil {
-		log.Printf("refresh token does not exist: %s", err)
-		respondWithError(w, http.StatusUnauthorized, "refresh token does not exist")
-		return
-	} else if time.Now().After(dbRefreshToken.ExpiresAt) || dbRefreshToken.RevokedAt.Valid {
-		log.Printf("refresh token expired: %s", err)
-		respondWithError(w, http.StatusUnauthorized, "refresh token expired")
+		log.Printf("invalid jwt: %s", err)
+		respondWithError(w, http.StatusUnauthorized, "malformed or expired jwt")
 		return
 	}
 
-	jwtTokenString, err := auth.MakeJWT(dbRefreshToken.UserID, cfg.secret, time.Hour)
+	decoder := json.NewDecoder(req.Body)
+	params := parameters{}
+	if err := decoder.Decode(&params); err != nil {
+		log.Printf("malformed request body")
+		respondWithError(w, http.StatusBadRequest, "malformed request body")
+		return
+	}
+
+	hashPass, err := auth.HashPassword(params.Password)
 	if err != nil {
-		log.Printf("error creating JWT: %s", err)
-		respondWithError(w, http.StatusInternalServerError, "error creating JWT")
+		log.Printf("Unable to hash password: %s", err)
+		respondWithError(w, http.StatusInternalServerError, "unable to hash password")
+		return
+	}
+
+	dbUser, err := cfg.db.UpdateUser(req.Context(), database.UpdateUserParams{
+		ID:             userID,
+		Email:          params.Email,
+		HashedPassword: hashPass,
+	})
+	if err != nil {
+		log.Printf("user does not exist")
+		respondWithError(w, http.StatusBadRequest, "user does not exist")
+		return
 	}
 
 	respondWithJSON(w, http.StatusOK, response{
-		Token: jwtTokenString,
+		User: User{
+			ID:          dbUser.ID,
+			CreatedAt:   dbUser.CreatedAt,
+			UpdatedAt:   dbUser.UpdatedAt,
+			Email:       dbUser.Email,
+			IsChirpyRed: dbUser.IsChirpyRed,
+		},
 	})
 
 }
 
-func (cfg *apiConfig) revoke(w http.ResponseWriter, req *http.Request) {
-	refreshTokenString, err := auth.GetBearerToken(req.Header)
+func (cfg *apiConfig) deleteChirp(w http.ResponseWriter, req *http.Request) {
+
+	jwtString, err := auth.GetBearerToken(req.Header)
 	if err != nil {
-		log.Printf("error retrieving refresh token")
-		respondWithError(w, http.StatusBadRequest, "error retrieving refresh token")
+		log.Printf("error retrieving token")
+		respondWithError(w, http.StatusUnauthorized, "error retrieving token")
 		return
 	}
 
-	err = cfg.db.RevokeRefreshToken(req.Context(), refreshTokenString)
+	userUUID, err := auth.ValidateJWT(jwtString, cfg.secret)
 	if err != nil {
-		log.Printf("error revoking token in database: %s", err)
-		respondWithError(w, http.StatusInternalServerError, "error revoking token in database")
+		log.Printf("invalid jwt: %s", err)
+		respondWithError(w, http.StatusUnauthorized, "malformed or expired jwt")
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	chirpID := req.PathValue("chirpID")
+	chirpUUID, err := uuid.Parse(chirpID)
+	if err != nil {
+		log.Printf("error parsing chirpID: %s", err)
+		respondWithError(w, http.StatusBadRequest, "malformed chirp ID")
+		return
+	}
+
+	_, err = cfg.db.DeleteChirp(req.Context(), database.DeleteChirpParams{
+		ID:     chirpUUID,
+		UserID: userUUID,
+	})
+
+	if err != nil {
+		log.Printf("error deleting chirp or not found: %s", err)
+		respondWithError(w, http.StatusForbidden, "chirp not found")
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, "")
 
 }
