@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/Breadumi/Chirpy/internal/auth"
@@ -85,7 +86,26 @@ func (cfg *apiConfig) createChirp(w http.ResponseWriter, req *http.Request) {
 
 func (cfg *apiConfig) getChirps(w http.ResponseWriter, req *http.Request) {
 
-	chirpsSQLC, err := cfg.db.GetChirps(req.Context())
+	author_id := req.URL.Query().Get("author_id")
+	var err error
+	var chirpsSQLC []database.Chirp
+
+	if author_id == "" {
+		chirpsSQLC, err = cfg.db.GetChirps(req.Context())
+	} else {
+		author_uuid := uuid.MustParse(author_id)
+		chirpsSQLC, err = cfg.db.GetChirpsByUser(req.Context(), author_uuid)
+	}
+
+	sort_string := req.URL.Query().Get("sort")
+	if sort_string == "desc" {
+		slices.Reverse(chirpsSQLC)
+	} else if sort_string != "" && sort_string != "asc" {
+		log.Printf("malformed query: %s", sort_string)
+		respondWithError(w, http.StatusBadRequest, "malformed query")
+		return
+	}
+
 	if err != nil {
 		log.Printf("error querying database: %s", err)
 		respondWithError(w, http.StatusInternalServerError, "error querying database")
