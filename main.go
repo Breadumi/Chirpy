@@ -22,6 +22,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	secret         string
 }
 
 func main() {
@@ -44,6 +45,7 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
 		platform:       os.Getenv("PLATFORM"),
+		secret:         os.Getenv("SECRET"),
 	}
 
 	port := "8080"
@@ -59,6 +61,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", cfg.createChirp)       // create one chirp
 	mux.HandleFunc("GET /api/chirps", cfg.getChirps)          // return all chirps
 	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.getChirp) // return one chirp
+	mux.HandleFunc("POST /api/login", cfg.login)              // log in a user
 
 	fileServer := http.FileServer(http.Dir("."))
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.mwMetricInc(fileServer))) // serve files from root directory

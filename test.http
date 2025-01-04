@@ -1,54 +1,17 @@
-POST http://localhost:8080/api/validate_chirp
+POST http://localhost:8080/api/users
 Content-Type: application/json
 
 {
-    "body": "I had something interesting for breakfast"
+    "password": "laksjdfl",
+    "email": "lane@example.com"
 }
 
-### Test long chirp
-POST http://localhost:8080/api/validate_chirp
+###
+POST http://localhost:8080/api/users
+
 Content-Type: application/json
 
 {
-    "body": "This is a very long message that should exceed the 140 character limit and therefore should receive a 400 error response because it violates our silly rule about chirp length..."
-}
-
-### Test kerfuffle chirp
-POST http://localhost:8080/api/validate_chirp
-Content-Type: application/json
-
-{
-    "body": "This a kerfuffle that is short"
-}
-
-### Test kerfuffle chirp too long
-POST http://localhost:8080/api/validate_chirp
-Content-Type: application/json
-
-{
-    "body": "This a kerfuffle that is too long alsdjflaksjdflkasjdfklajsdlkfajsldkfjalskdjfalksjdflaskdjflaskdjflaskdjflaskjdflaskdjflaskdjflaskdjflaskdjfaslkdfjaslkdjflaksdjflaskjdflksadjflaskdj"
-}
-
-### Test all words
-POST http://localhost:8080/api/validate_chirp
-Content-Type: application/json
-
-{
-    "body": "This a kerfuffle Fornax sharbert test"
-}
-
-### Test punctuation
-POST http://localhost:8080/api/validate_chirp
-Content-Type: application/json
-
-{
-    "body": "This a kerfuffle! fornax sharbert! blah"
-}
-
-### Test no spaces
-POST http://localhost:8080/api/validate_chirp
-Content-Type: application/json
-
-{
-    "body": "This a kerfufflefornax sharbert that is short"
+    "password": "jskdljf",
+    "email": "anothertest@example.com"
 }
